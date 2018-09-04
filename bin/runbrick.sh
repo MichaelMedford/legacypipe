@@ -12,7 +12,7 @@ source ../bin/legacypipe-env
 export MKL_NUM_THREADS=1
 
 # Try limiting memory to avoid killing the whole MPI job...
-ulimit -S -v 30000000
+ulimit -S -v 40000000
 ulimit -a
 
 outdir=$LEGACY_SURVEY_DIR
