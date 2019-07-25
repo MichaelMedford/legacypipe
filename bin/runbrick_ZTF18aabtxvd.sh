@@ -4,7 +4,9 @@
 
 
 #export CODEPATH=/project/projectdirs/uLens/code/bin
-export PROJECTPATH=/global/homes/c/cwar4677
+#export PROJECTPATH=/global/homes/c/cwar4677
+export PROJECTPATH=/global/homes/c/cwar4677/tractor_dr8
+
 
 #cd $PROJECTPATH/legacypipe/py
 #source $PROJECTPATH/legacypipe/bin/legacypipe-env
@@ -14,14 +16,14 @@ export PROJECTPATH=/global/homes/c/cwar4677
 
 source $PROJECTPATH/legacypipe/bin/legacypipe-env
 
-export LEGACY_SURVEY_DIR=/project/projectdirs/uLens/ZTF/Tractor/data/ZTF18aabtxvd/tractor
+export LEGACY_SURVEY_DIR=/global/cscratch1/sd/cwar4677/ZTF18aabtxvd_g/tractor
 
 #export PYTHONPATH=/project/projectdirs/uLens/ZTF/Tractor/legacypipe/py:$PYTHONPATH
 #export PYTHONPATH=/global/homes/c/cwar4677:$PYTHONPATH
 export outdir=$LEGACY_SURVEY_DIR #/global/homes/c/cwar4677/output_ZTF18aaymybb
 export PYTHONPATH=$PROJECTPATH/legacypipe/py:$PYTHONPATH
 export PYTHONPATH=$PROJECTPATH:$PYTHONPATH
-
+python write_scielist_all.py
 python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfcoaddmaker.py --folder=$LEGACY_SURVEY_DIR/images  
 #python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfCCDtablemaker.py $LEGACY_SURVEY_DIR $outdir
 

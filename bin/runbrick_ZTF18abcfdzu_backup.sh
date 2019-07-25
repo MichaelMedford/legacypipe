@@ -17,10 +17,10 @@ export outdir=$LEGACY_SURVEY_DIR #/global/homes/c/cwar4677/output_ZTF18aaymybb
 export PYTHONPATH=$PROJECTPATH/legacypipe/py:$PYTHONPATH
 export PYTHONPATH=$PROJECTPATH/new_tractor/tractor-1:$PYTHONPATH
 
-python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfcoaddmaker.py --folder=$LEGACY_SURVEY_DIR/images  
-python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfCCDtablemaker.py $LEGACY_SURVEY_DIR $outdir
+#python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfcoaddmaker.py --folder=$LEGACY_SURVEY_DIR/images  
+#python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfCCDtablemaker.py $LEGACY_SURVEY_DIR $outdir
 
-python $PROJECTPATH/legacypipe/py/legacypipe/runbrick.py --outdir=$outdir --coadd-bw --nsigma=6 --force-all --radec 230.217170 54.215558 --blobradec 230.217170 54.215558 --unwise-dir $LEGACY_SURVEY_DIR/images --no-wise --old-calibs-ok #--plots
+python $PROJECTPATH/legacypipe/py/legacypipe/runbrick.py --outdir=$outdir --coadd-bw --nsigma=6 --force-all --radec 230.217170 54.215558 --blobradec 230.217170 54.215558 --unwise-dir $LEGACY_SURVEY_DIR/images --no-wise --old-calibs-ok --threads=32 #--plots
 
 #python $PROJECTPATH/legacypipe/py/legacypipe/forced_photom.py --no-ceres --no-move-gaia --catalog $LEGACY_SURVEY_DIR/tractor-i/cus/tractor-custom-230217p54215.fits 68930226 CCD0  $LEGACY_SURVEY_DIR/tractor/cus/forced_68930226.fits #$LEGACY_SURVEY_DIR/tractor/cus/tractor-custom-230217p54215.fits 
 #--blobradec 230.217170 54.215558 

@@ -4,7 +4,7 @@
 
 
 #export CODEPATH=/project/projectdirs/uLens/code/bin
-export PROJECTPATH=/global/homes/c/cwar4677
+export PROJECTPATH=/global/homes/c/cwar4677/tractor_dr8
 
 #cd $PROJECTPATH/legacypipe/py
 #source $PROJECTPATH/legacypipe/bin/legacypipe-env
@@ -14,18 +14,19 @@ export PROJECTPATH=/global/homes/c/cwar4677
 
 source $PROJECTPATH/legacypipe/bin/legacypipe-env
 
-export LEGACY_SURVEY_DIR=/project/projectdirs/uLens/ZTF/Tractor/data/ZTF18aahqkbt_r/tractor
+export LEGACY_SURVEY_DIR=/global/cscratch1/sd/cwar4677/ZTF18aahqkbt_r/tractor
 
 #export PYTHONPATH=/project/projectdirs/uLens/ZTF/Tractor/legacypipe/py:$PYTHONPATH
 #export PYTHONPATH=/global/homes/c/cwar4677:$PYTHONPATH
 export outdir=$LEGACY_SURVEY_DIR #/global/homes/c/cwar4677/output_ZTF18aaymybb
 export PYTHONPATH=$PROJECTPATH/legacypipe/py:$PYTHONPATH
 export PYTHONPATH=$PROJECTPATH:$PYTHONPATH
-
+python write_scielist_all.py
 python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfcoaddmaker.py --folder=$LEGACY_SURVEY_DIR/images  
-#python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfCCDtablemaker.py $LEGACY_SURVEY_DIR $outdir
+python write_scielist.py 20180400000000 
+python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfCCDtablemaker.py $LEGACY_SURVEY_DIR $outdir
 
-#python $PROJECTPATH/legacypipe/py/legacypipe/runbrick.py --outdir=$outdir --coadd-bw --nsigma=6 --stage writecat --radec 230.217170 54.215558 --blobradec 230.217170 54.215558 --unwise-dir $LEGACY_SURVEY_DIR/images --no-wise #--plots
+python $PROJECTPATH/legacypipe/py/legacypipe/runbrick.py --outdir=$outdir --coadd-bw --nsigma=6 --force-all --radec 123.860919 +45.592208 --blobradec 123.860919 +45.592208 --unwise-dir $LEGACY_SURVEY_DIR/images --no-wise --old-calibs-ok --threads=32 #--plots
 
 #python $PROJECTPATH/legacypipe/py/legacypipe/forced_photom.py --catalog $LEGACY_SURVEY_DIR/tractor-i/cus/tractor-custom-230217p54215.fits 53820533 CCD0  $LEGACY_SURVEY_DIR/tractor-i/cus/tractor-custom-230217p54215.fits testout 
 

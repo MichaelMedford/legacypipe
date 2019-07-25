@@ -1117,7 +1117,7 @@ def stage_srcs(targetrd=None, pixscale=None, targetwcs=None,
         # back in (much) later.  These are Gaia sources near the
         # centers of LSLGA large galaxies, so we want to propagate the
         # Gaia catalog information, but don't want to fit them.
-        '''
+        
         I, = np.nonzero(refstars.donotfit)
         if len(I):
             T_donotfit = refstars[I]
@@ -1125,7 +1125,7 @@ def stage_srcs(targetrd=None, pixscale=None, targetwcs=None,
             refstars.cut(I)
             refcat = [refcat[i] for i in I]
             assert(len(refstars) == len(refcat))
-        ''' 
+        
         # Pull out star clusters too.
         I, = np.nonzero(refstars.iscluster)
         if len(I):
@@ -1135,14 +1135,13 @@ def stage_srcs(targetrd=None, pixscale=None, targetwcs=None,
             refcat = [refcat[i] for i in I]
             assert(len(refstars) == len(refcat))
         del I
-    '''
+    
     if refstars:
         # Don't detect new sources where we already have reference stars
         avoid_x = refstars.ibx[refstars.in_bounds]
         avoid_y = refstars.iby[refstars.in_bounds]
     else:
-    '''
-    avoid_x, avoid_y = np.array([]), np.array([])
+        avoid_x, avoid_y = np.array([]), np.array([])
 
     # Subtract star halos?
     if star_halos and gaia_stars:
@@ -1340,7 +1339,7 @@ def stage_srcs(targetrd=None, pixscale=None, targetwcs=None,
         plt.title('Detections')
         ps.savefig()
         ax = plt.axis()
-        if len(refstars):
+        if refstars:
             I, = np.nonzero([r[0] == 'T' for r in refstars.ref_cat])
             if len(I):
                 plt.plot(refstars.ibx[I], refstars.iby[I], '+', color=(0,1,1),
@@ -1595,6 +1594,7 @@ def stage_fitblobs(T=None,
                    simul_opt=False, use_ceres=True, mp=None,
                    checkpoint_filename=None,
                    checkpoint_period=600,
+                   transient=False,
                    write_pickle_filename=None,
                    write_metrics=True,
                    get_all_models=False,
@@ -1613,7 +1613,7 @@ def stage_fitblobs(T=None,
 
     record_event and record_event('stage_fitblobs: starting')
     tlast = Time()
-
+    
     # How far down to render model profiles
     minsigma = 0.1
     for tim in tims:
@@ -1817,13 +1817,14 @@ def stage_fitblobs(T=None,
     else:
         HH, WW = targetwcs.shape
         refmap = np.zeros((int(HH), int(WW)), np.uint8)
-
+   
+    
     # Create the iterator over blobs to process
     blobiter = _blob_iter(brickname, blobslices, blobsrcs, blobs, targetwcs, tims,
                           cat, bands, plots, ps, simul_opt, use_ceres,
                           refmap, brick, rex,
                           skipblobs=skipblobs,
-                          max_blobsize=max_blobsize, custom_brick=custom_brick)
+                          max_blobsize=max_blobsize, custom_brick=custom_brick,transient=transient)
     # to allow timingpool to queue tasks one at a time
     blobiter = iterwrapper(blobiter, len(blobsrcs))
 
@@ -2175,12 +2176,12 @@ def _format_all_models(T, newcat, BB, bands, rex):
 def _blob_iter(brickname, blobslices, blobsrcs, blobs, targetwcs, tims, cat, bands,
                plots, ps, simul_opt, use_ceres, refmap,
                brick, rex,
-               skipblobs=None, max_blobsize=None, custom_brick=False):
+               skipblobs=None, max_blobsize=None, custom_brick=False, transient=False):
     '''
     *blobs*: map, with -1 indicating no-blob, other values indexing *blobslices*,*blobsrcs*.
     '''
     from collections import Counter
-
+   
     if skipblobs is None:
         skipblobs = []
 
@@ -2283,7 +2284,7 @@ def _blob_iter(brickname, blobslices, blobsrcs, blobs, targetwcs, tims, cat, ban
         yield (brickname, iblob,
                (nblob, iblob, Isrcs, targetwcs, bx0, by0, blobw, blobh,
                blobmask, subtimargs, [cat[i] for i in Isrcs], bands, plots, ps,
-               simul_opt, use_ceres, rex, refmap[bslc]))
+               simul_opt, use_ceres, rex, refmap[bslc]),transient)
 
 def _bounce_one_blob(X):
     ''' This just wraps the one_blob function, for debugging &
@@ -2291,13 +2292,13 @@ def _bounce_one_blob(X):
     '''
     from legacypipe.oneblob import one_blob
 
+    
 
 
-
-    (brickname, iblob, X) = X
-
+    (brickname, iblob, X, transient) = X
+    
     try:
-        result = one_blob(X)
+        result = one_blob(X,transient)
         ### This defines the format of the results in the checkpoints files
         return dict(brickname=brickname, iblob=iblob, result=result)
     except:
@@ -3169,10 +3170,11 @@ def stage_writecat(
     primhdr.add_record(dict(name='PRODTYPE', value='catalog',
                             comment='NOAO data product type'))
 
+    '''
     for i,ap in enumerate(apertures_arcsec):
         primhdr.add_record(dict(name='APRAD%i' % i, value=ap,
                                 comment='Aperture radius, in arcsec'))
-
+    '''
     # Record the meaning of mask bits
     bits = list(DQ_BITS.values())
     bits.sort()
@@ -3332,7 +3334,7 @@ def run_brick(brick, survey, radec=None, pixscale=0.262,
               rex=False,
               splinesky=True,
 
-
+              transient=False,
               subsky=True,
 
               constant_invvar=False,
@@ -3572,6 +3574,7 @@ def run_brick(brick, survey, radec=None, pixscale=0.262,
                   depth_cut=depth_cut,
                   splinesky=splinesky,
                   subsky=subsky,
+                  transient=transient,
                   tycho_stars=tycho_stars,
                   gaia_stars=gaia_stars,
                   large_galaxies=large_galaxies,
@@ -3830,6 +3833,9 @@ python -u legacypipe/runbrick.py --plots --brick 2440p070 --zoom 1900 2400 450 9
         help='Just check for existence of output files for this brick?')
     parser.add_argument('--skip', default=False, action='store_true',
                         help='Quit if the output catalog already exists.')
+    
+    parser.add_argument('--transient', default=False, action='store_true',
+                        help='Fit the point source + galaxy model') 
     parser.add_argument('--skip-coadd', default=False, action='store_true',
                         help='Quit if the output coadd jpeg already exists.')
 

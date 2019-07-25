@@ -1817,7 +1817,8 @@ class LegacySurveyData(object):
         number, integer), *ccdname* (string), and *camera* (string),
         if given.
         '''
-
+        
+       
         if expnum is not None:
             C = self.try_expnum_kdtree(expnum)
             if C is not None:
@@ -1826,7 +1827,7 @@ class LegacySurveyData(object):
                 if camera is not None:
                     C = C[C.camera == camera]
                 return C
-
+        
         if expnum is not None and ccdname is not None:
             # use ccds_index
             if self.ccds_index is None:
@@ -1836,7 +1837,8 @@ class LegacySurveyData(object):
                     C = self.get_ccds(columns=['expnum','ccdname'])
                 self.ccds_index = dict([((e,n),i) for i,(e,n) in
                                         enumerate(zip(C.expnum, C.ccdname))])
-            
+             
+            print(C.ccdname)
             row = self.ccds_index[(expnum, ccdname)]
             if self.ccds is not None:
                 return self.ccds[row]

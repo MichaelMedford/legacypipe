@@ -340,6 +340,7 @@ def sed_matched_detection(sedname, sed, detmaps, detivs, bands,
         # ("saddle" is passed in as an argument to the
         #  sed_matched_detection function)
         drop = max(saddle, Y * 0.1)
+        
         return Y - drop
 
     lowest_saddle = nsigma - saddle
@@ -439,8 +440,9 @@ def sed_matched_detection(sedname, sed, detmaps, detivs, bands,
     # the final word, it is just a quick veto of pixels we know for
     # sure will be vetoed.
     vetomap = np.zeros(sedsn.shape, bool)
-
+    
     for x,y,r in zip(xomit, yomit, romit):
+        
         xlo = int(np.clip(np.floor(x - r), 0, W-1))
         xhi = int(np.clip(np.ceil (x + r), 0, W-1))
         ylo = int(np.clip(np.floor(y - r), 0, H-1))
@@ -448,6 +450,8 @@ def sed_matched_detection(sedname, sed, detmaps, detivs, bands,
         vetomap[ylo:yhi+1, xlo:xhi+1] |= (np.hypot(
             (x - np.arange(xlo, xhi+1))[np.newaxis, :],
             (y - np.arange(ylo, yhi+1))[:, np.newaxis]) < r)
+    
+   
 
     # For each peak, determine whether it is isolated enough --
     # separated by a low enough saddle from other sources.  Need only
@@ -457,25 +461,26 @@ def sed_matched_detection(sedname, sed, detmaps, detivs, bands,
     nveto = 0
     nsaddle = 0
     naper = 0
-    
+     
     for i,(x,y) in enumerate(zip(px, py)):
         # one plot per peak is a little excessive!
+        #print(i,nveto,nsaddle,naper)
         if False and ps is not None:
             level = saddle_level(sedsn[y,x])
             _peak_plot_1(vetomap, x, y, px, py, keep, i, xomit, yomit, sedsn, allblobs,
                          level, dilate, saturated_pix, satur, ps)
-
+        
         if vetomap[y,x]:
             #print('  in veto map!')
             nveto += 1
             continue
-
+        
         level = saddle_level(sedsn[y,x])
         ablob = allblobs[y,x]
         index = int(ablob - 1)
         slc = allslices[index]
 
-        #print('source', i, 'of', len(px), 'at', x,y, 'S/N', sedsn[y,x], 'saddle', level)
+        
         #print('  allblobs slice', slc)
 
         saddlemap = (sedsn[slc] > level)
@@ -495,20 +500,21 @@ def sed_matched_detection(sedname, sed, detmaps, detivs, bands,
         oy = np.append(yomit, py[:i][keep[:i]]) - y0
         h,w = blobs.shape
         cut = False
+        #print('source', i, 'of', len(px), 'at', x,y, 'S/N', sedsn[y,x], 'saddle', level, 'shape', h, w, ox, oy)
         if len(ox):
             ox = ox.astype(int)
             oy = oy.astype(int)
             cut = any((ox >= 0) * (ox < w) * (oy >= 0) * (oy < h) *
                       (blobs[np.clip(oy,0,h-1), np.clip(ox,0,w-1)] == 
                        thisblob))
-
+        
         if False and cut and ps is not None:
             _peak_plot_2(ox, oy, w, h, blobs, thisblob, sedsn, x0, y0,
                          x, y, level, ps)
         if False and (not cut) and ps is not None:
             _peak_plot_3(sedsn, nsigma, x, y, x0, y0, slc, saddlemap,
                          xomit, yomit, px, py, keep, i, cut, ps)
-
+        
         if cut:
             # in same blob as previously found source.
             #print('  cut')
@@ -517,7 +523,7 @@ def sed_matched_detection(sedname, sed, detmaps, detivs, bands,
             nsaddle += 1
             #print('Added to vetomap:', np.sum(saddlemap), 'pixels set; now total of', np.sum(vetomap), 'pixels set')
             continue
-
+       
         # Measure in aperture...
         ap   =  sedsn[max(0, y-apout):min(H,y+apout+1),
                       max(0, x-apout):min(W,x+apout+1)]
@@ -544,7 +550,7 @@ def sed_matched_detection(sedname, sed, detmaps, detivs, bands,
         keep[i] = True
 
         vetomap[slc] |= saddlemap
-        #print('Added to vetomap:', np.sum(saddlemap), 'pixels set; now total of', np.sum(vetomap), 'pixels set')
+        #print('Added saddlemap to vetomap:', np.sum(saddlemap), 'pixels set; now total of', np.sum(vetomap), 'pixels set')
 
         if False and ps is not None:
             plt.clf()
@@ -597,7 +603,7 @@ def sed_matched_detection(sedname, sed, detmaps, detivs, bands,
         plt.figlegend((p3[0],p1[0],p2[0]), ('Existing', 'Keep', 'Drop'),
                       'upper left')
         ps.savefig()
-
+    
     return hotblobs, px, py, aper, peakval
 
 def _peak_plot_1(vetomap, x, y, px, py, keep, i, xomit, yomit, sedsn, allblobs,

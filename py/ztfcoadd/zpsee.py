@@ -15,7 +15,7 @@ import copy
 
 def calc_lmt_mag(var, seeing, zp):
 
-    return -2.5 * np.log10(5.0*np.sqrt(3.14159*seeing*seeing/1.01/1.01)*var*1.48) + zp
+    return -2.5 * np.log10(5.0*np.sqrt(3.14159*seeing*seeing/1.01/1.01)*var*1.4826) + zp
 
 def calc_p9_zp(im):
 
@@ -76,7 +76,7 @@ def query_iptf_stars(query_dict, iptf_con):
 
     cursor = iptf_con.cursor()
     cursor.execute(iptf_matchquery.format(**query_dict))
-    # print iptf_matchquery.format(**query_dict)
+    print(iptf_matchquery.format(**query_dict))
 
     result = np.array(cursor.fetchall(), dtype=[('id','<i8'),
                                                     ('ra','<f8'),
@@ -120,7 +120,7 @@ def zpsee_info(scie_list, pre_cat_list, debug, coaddFlag=False):
     lmt_mags = []
     skys = []
     skysigs = []
-
+    maskfracs = []
     for i,im in enumerate(scie_list):
         utils.print_d("%i/%i "%(i+1,len(scie_list))+im.split('/')[-1],debug)
 
@@ -134,6 +134,7 @@ def zpsee_info(scie_list, pre_cat_list, debug, coaddFlag=False):
             weight_data = f[0].data
 
         mask = im.replace("sciimg","mskimg")
+        print(weight,mask)
         with fits.open(mask) as f:
             mask_data = f[0].data
 
@@ -145,20 +146,20 @@ def zpsee_info(scie_list, pre_cat_list, debug, coaddFlag=False):
         real_stars = np.load(real_stars_fname)
         desi_stars = real_stars['desi_stars']
         iptf_stars = real_stars['iptf_stars']
-
+        #print(desi_stars, iptf_stars)
         these_fluxes, these_seeings, these_zps = return_star_info(cat, desi_stars)
         result = copy.deepcopy(desi_stars)
-        print('thesezps',these_zps)
+
         if len(these_zps) == 0:
             these_fluxes, these_seeings, these_zps = return_star_info(cat, iptf_stars)
             result = copy.deepcopy(iptf_stars)
 
-        print('thesezps',these_zps)
-        np.savez(real_stars_fname,desi_stars=desi_stars,iptf_stars=iptf_stars,real_stars=result)
 
+        np.savez(real_stars_fname,desi_stars=desi_stars,iptf_stars=iptf_stars,real_stars=result)
+        #print(these_zps)
         seeing = np.median(these_seeings)
         zp = np.median(these_zps)
-        print('zp is',zp)
+
         if not coaddFlag:
             cond0 = mask_data & 6141 == 0
             cond1 = mask_data & 2050 == 0
@@ -168,10 +169,11 @@ def zpsee_info(scie_list, pre_cat_list, debug, coaddFlag=False):
 
         sky = np.median(image_data_flat)
         med_image = np.abs(image_data_flat - sky)
-        var = np.median(med_image)
-
+        var = 1.4826 * np.median(med_image)
+        maskfrac=np.sum(image_data != 0)/np.sum(image_data)
+        print('MASK FRAC ',np.sum(image_data != 0)/np.sum(image_data),'VAR', var, 'SKY', sky)
         lmt_mag = calc_lmt_mag(var,seeing,zp)
-
+        
         utils.print_d('Stars in Cat %i | Stars in Results %i'%(len(cat),len(result)),debug)
         utils.print_d('Number of Matches = %i'%len(these_zps),debug)
         utils.print_d('Median ZP = %.4f'%zp,debug)
@@ -184,19 +186,27 @@ def zpsee_info(scie_list, pre_cat_list, debug, coaddFlag=False):
         lmt_mags.append(lmt_mag)
         skys.append(sky)
         skysigs.append(var)
+        maskfracs.append(maskfrac)
         utils.print_d('',debug)
+    print(maskfracs,zps,skysigs)
 
     return np.array(zps), np.array(seeings), np.array(lmt_mags), np.array(skys), np.array(skysigs)
 
 def update_image_headers(zp, see, lmt_mag, skys, skysigs, scie_list, debug):
-    print(scie_list)
+    
     for zeropoint, seeing, mag, sky, skysig, image in zip(zp, see, lmt_mag, skys, skysigs, scie_list):
-
-        with fits.open(image, mode='update') as f:
+        
+        with open(image, 'rb') as g:
+        #with fits.open(image, mode='update') as f:
+            f=fits.open(g)
             data = f[0].data
             header = f[0].header
-           
-            header["C3ZP"] = zeropoint 
+            print(zeropoint)
+            try: 
+                header["C3ZP"] = zeropoint 
+            except ValueError:
+                print(image, 'FAILED')
+                continue
             header["C3SEE"] = seeing
             header["C3LMTMAG"] = mag
             header["C3SKY"] = sky

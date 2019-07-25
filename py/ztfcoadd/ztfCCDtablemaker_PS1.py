@@ -15,14 +15,14 @@ from astrometry.util.fits import fits_table
 __whatami__ = 'ZTF CCD Table Maker'
 __author__ = 'Michael Medford <MichaelMedford@berkeley.edu>'
 
-def CreateCCDTable(folder,outfolder):
+def CreateCCDTable(folder,outfolder,ra,dec):
 
 	#image_list = glob.glob(folder+'/images/*sciimg.fits')
-	image_list = np.loadtxt(folder+'/scie.list',dtype=str)
+	image_list = np.loadtxt(folder+'/scie_PS1.list',dtype=str)
 
-	filter_tbl = {1: 'g',
-	              2: 'r',
-	              3: 'i'}
+	filter_tbl = {'g.00000': 'g',
+	              'r.00000': 'r',
+	              'i.00000': 'i'}
 
 	table = defaultdict(list)
 
@@ -35,8 +35,10 @@ def CreateCCDTable(folder,outfolder):
 		image_list=list([str([image_list][0])])
 	print(image_list)
 
-
-	
+	catalogData = Catalogs.query_region('"'+ra+' '+dec+'"', radius=0.1, catalog="Panstarrs", data_release="dr2", table="stack")
+	print("Number of results:",len(catalogData))
+	print(catalog.field('gpsfMajorFWHM'),catalog.field('gpsfMinorFWHM'))
+		
 	for image in image_list:
 		
 	
@@ -52,7 +54,7 @@ def CreateCCDTable(folder,outfolder):
 			header = f[0].header
 
 		table['image_filename'].append(image_fname)
-		table['fwhm'].append(1.0)#max(float(header['HIERARCH CHIP.SEEING']),1.0))
+		table['fwhm'].append(catalog.field(filter_tbl[header['FILTERID']]+'psfMajorFWHM'))#max(float(header['HIERARCH CHIP.SEEING']),1.0))
 
 		table['image_hdu'].append(0)
 		table['camera'].append('ps1')
@@ -60,10 +62,13 @@ def CreateCCDTable(folder,outfolder):
 			table['expnum'].append(header['EXPID'])
 		except KeyError:
 			table['expnum'].append(57119266)
+		table['ccdname'].append('CCD0')
+		'''
 		try:
 			table['ccdname'].append(header['EXTNAME'])
 		except KeyError:
 			table['ccdname'].append('4')
+		'''
 		table['object'].append('None')
 		try:
 			table['propid'].append(header['PROGRMID'])
@@ -72,7 +77,8 @@ def CreateCCDTable(folder,outfolder):
 		try:
 			table['filter'].append(filter_tbl[header['FILTERID']])
 		except KeyError:
-			table['filter'].append('1')
+			table['filter'].append(filter_tbl[header['FPA.FILTER']])
+			print(table['filter'])	
 		try:
 			table['exptime'].append(header['EXPTIME'])
 		except KeyError:
@@ -100,21 +106,23 @@ def CreateCCDTable(folder,outfolder):
 	
 		table['ra'].append(coords.ra.degree)
 		table['dec'].append(coords.dec.degree)
-		table['sig1'].append(1.0)
+		table['sig1'].append(header['C3SKYSIG'])
+
+        #table['sig1'].append(1.01865e-08/1e-9)
 		'''
 		#table['skyrms'].append(0)
 		try:
 			table['sig1'].append(header['C3SKYSIG'])
-		except KeyError:
+		#except KeyError:
 			try:
 				table['sig1'].append(header['GSTDDEV'])
 			except KeyError:
 				table['sig1'].append(header['ASTCHI2'])
 		'''
-		try:
-			table['ccdzpt'].append(header['C3ZP'])
-		except KeyError:
-			table['ccdzpt'].append(header['HIERARCH FPA.ZP'])
+		#try:
+		table['ccdzpt'].append(header['C3ZP'])
+		#except KeyError:
+		#	table['ccdzpt'].append(header['HIERARCH FPA.ZP'])
 		
 		#table['zpt'].append(0)		
 		table['ccdraoff'].append(0)
@@ -130,7 +138,7 @@ def CreateCCDTable(folder,outfolder):
 	for key in table:
 	    f_table.set(key,table[key])
 	
-	table_name = outfolder+'/survey-ccds-ztf.fits'
+	table_name = outfolder+'/survey-ccds-PS1.fits'
 	
 	f_table.write_to(table_name)
 	os.system('gzip %s'%table_name)
@@ -143,4 +151,6 @@ if __name__ == '__main__':
 	
 	folder = sys.argv[1]
 	outfolder = sys.argv[2]
-	CreateCCDTable(folder,outfolder)
+	ra = sys.argv[3]
+	dec = sys.argv[4]
+	CreateCCDTable(folder,outfolder,ra,dec)

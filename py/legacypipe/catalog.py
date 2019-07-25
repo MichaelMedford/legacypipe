@@ -93,9 +93,12 @@ def prepare_fits_catalog(cat, invvars, T, hdr, filts, fs, allbands=None,
     flux = np.zeros((len(cat), len(allbands)), np.float32)
     fluxPoint = np.zeros((len(cat), len(allbands)), np.float32)
     fluxGal = np.zeros((len(cat), len(allbands)), np.float32)
+    fluxPoint_ivar = np.zeros((len(cat), len(allbands)), np.float32)
+    fluxGal_ivar = np.zeros((len(cat), len(allbands)), np.float32)
 
     flux_ivar = np.zeros((len(cat), len(allbands)), np.float32)
     rev_typemap = fits_reverse_typemap
+    print('filts here',filts)
     for filt in filts:
         i = allbands.index(filt)
         for j,src in enumerate(cat):
@@ -104,9 +107,13 @@ def prepare_fits_catalog(cat, invvars, T, hdr, filts, fs, allbands=None,
                 #print(clazz)                
                 if isinstance(src, (PSFandExpGalaxy_diffcentres,PSFandDevGalaxy_diffcentres)):
                     #print(src.getBrightnesses()[1],'BRIGHTNESSES')
-                    b=src.getBrightnesses()[1]
+                    b=src.getBrightnessPoint()#src.getBrightnesses()[1]
                     fluxPoint[j,i]=b.getFlux(filt)
-                    b=src.getBrightnesses()[0]
+                    if isinstance(src, (PSFandExpGalaxy_diffcentres)):
+                        b=src.getBrightnessExp()#src.getBrightnesses()[0]
+                    elif isinstance(src, (PSFandDevGalaxy_diffcentres)):
+                        b=src.getBrightnessDev()
+    
                     fluxGal[j,i]=b.getFlux(filt)
    
                 flux[j,i] = sum(b.getFlux(filt) for b in src.getBrightnesses())
@@ -121,7 +128,16 @@ def prepare_fits_catalog(cat, invvars, T, hdr, filts, fs, allbands=None,
         for j,src in enumerate(cat):
             if src is not None:
                 flux_ivar[j,i] = sum(b.getFlux(filt) for b in src.getBrightnesses())
-
+                if isinstance(src, (PSFandExpGalaxy_diffcentres,PSFandDevGalaxy_diffcentres)):
+                    #b=src.getBrightnessPoint()
+                    fluxPoint_ivar[j,i] = sum(b.getFlux(filt) for b in [src.getBrightnessPoint()])
+                    if isinstance(src, (PSFandExpGalaxy_diffcentres)):
+                        b=src.getBrightnessExp()#src.getBrightnesses()[0]
+                        fluxGal_ivar[j,i] = sum(b.getFlux(filt) for b in [src.getBrightnessExp()])
+                    elif isinstance(src, (PSFandDevGalaxy_diffcentres)):
+                        #b=src.getBrightnessDev()
+                        fluxGal_ivar[j,i] = sum(b.getFlux(filt) for b in [src.getBrightnessDev()])
+                    
         cat.setParams(params0)
 
     T.set('%sflux' % prefix, flux)
@@ -130,7 +146,9 @@ def prepare_fits_catalog(cat, invvars, T, hdr, filts, fs, allbands=None,
 
     if save_invvars:
         T.set('%sflux_ivar' % prefix, flux_ivar)
-
+        T.set('%sfluxPoint_ivar' % prefix, fluxPoint_ivar)
+        T.set('%sfluxGal_ivar' % prefix, fluxGal_ivar)
+    
     if fs is not None:
         fskeys = ['prochi2', 'pronpix', 'profracflux', 'proflux', 'npix']
         for k in fskeys:
@@ -193,7 +211,7 @@ def _get_tractor_fits_values(T, cat, pat, unpackShape=True):
     shapeDev = np.zeros((len(T), 3), np.float32)
     fracDev  = np.zeros(len(T), np.float32)
     posPoint = np.zeros((len(T),2), np.float64)
-    brightnessPoint = np.zeros((len(T),1), np.float32) 
+    brightnessPoint = np.zeros((len(T),2), np.float32) 
     
     for i,src in enumerate(cat):
         #print('_get_tractor_fits_values for pattern', pat, 'src', src)
@@ -211,8 +229,8 @@ def _get_tractor_fits_values(T, cat, pat, unpackShape=True):
             fracDev[i] = src.fracDev.getValue()
         elif isinstance(src, PSFandExpGalaxy_diffcentres):
             shapeExp[i,:] = src.shapeExp.getAllParams()
-           
-            brightnessPoint[i,:] = src.brightnessPoint.getAllParams() 
+            print(src.brightnessPoint.getAllParams()) 
+            #brightnessPoint[i,:] = src.brightnessPoint.getAllParams() 
             
             try:
                 posPoint[i,:] = src.posPoint.getAllParams()
@@ -222,7 +240,7 @@ def _get_tractor_fits_values(T, cat, pat, unpackShape=True):
                 print('posPoint parameters not present, subbing 0s')
         elif isinstance(src, PSFandDevGalaxy_diffcentres):
             shapeDev[i,:] = src.shapeDev.getAllParams()
-            brightnessPoint[i,:] = src.brightnessPoint.getAllParams()     
+            #brightnessPoint[i,:] = src.brightnessPoint.getAllParams()     
             try:
                 posPoint[i,:] = src.posPoint.getAllParams()
             except ValueError:
@@ -232,7 +250,7 @@ def _get_tractor_fits_values(T, cat, pat, unpackShape=True):
         elif isinstance(src, PSFandCompGalaxy_diffcentres):
             shapeDev[i,:] = src.shapeDev.getAllParams()
             shapeExp[i,:] = src.shapeExp.getAllParams()
-            brightnessPoint[i,:] = src.brightnessPoint.getAllParams() 
+            #brightnessPoint[i,:] = src.brightnessPoint.getAllParams() 
             
             try:
                 posPoint[i,:] = src.posPoint.getAllParams()
@@ -241,7 +259,7 @@ def _get_tractor_fits_values(T, cat, pat, unpackShape=True):
                 posPoint[i,:] = [0, 0]
                 print('posPoint parameters not present, subbing 0s')
             
-    T.set(pat % 'brightnessPoint', brightnessPoint[:])
+   # T.set(pat % 'brightnessPoint', brightnessPoint[:])
     T.set(pat % 'raPoint', posPoint[:,0]) 
     T.set(pat % 'decPoint', posPoint[:,1])
     
@@ -298,7 +316,7 @@ def read_fits_catalog(T, hdr=None, invvars=False, bands='grz',
 
 
     ibands = np.array([allbands.index(b) for b in bands])
-    #print(ibands)
+    print(ibands)
     ivs = []
     cat = []
 
@@ -450,7 +468,7 @@ def read_fits_catalog(T, hdr=None, invvars=False, bands='grz',
                     fluxesPoint[b] = t.get(fluxPrefix + 'fluxpoint_' + b)
                     assert(np.all(np.isfinite(fluxesPoint[b])))
                 brPoint = NanoMaggies(order=bands, **fluxesPoint)
-
+            print('LOOK HERE',brPoint,brGal)
             params.append(brPoint)
             '''
             if invvars:
@@ -472,7 +490,7 @@ def read_fits_catalog(T, hdr=None, invvars=False, bands='grz',
             '''
         elif issubclass(clazz, FixedCompositeGalaxy):
             # hard-code knowledge that params are fracDev, shapeE, shapeD
-        
+            params = [pos, br] 
        
             if ellipseClass is not None:
                 expeclazz = deveclazz = ellipseClass
@@ -495,10 +513,11 @@ def read_fits_catalog(T, hdr=None, invvars=False, bands='grz',
                 ivs.extend(t.shapeexp_ivar)
                 ivs.extend(t.shapedev_ivar)
         elif issubclass(clazz, PointSource):
-            pass
+            params = [pos, br]
+            
         else:
             raise RuntimeError('Unknown class %s' % str(clazz))
-        #print(clazz,params)
+        print(clazz,params)
         
         src = clazz(*params)
         cat.append(src)

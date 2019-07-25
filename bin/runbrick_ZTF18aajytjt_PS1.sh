@@ -24,7 +24,7 @@ export PYTHONPATH=$PROJECTPATH:$PYTHONPATH
 
 #python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfcoaddmaker_PS1.py --folder=$LEGACY_SURVEY_DIR/images  
 #python $PROJECTPATH/legacypipe/py/ztfcoadd/ztfCCDtablemaker_PS1.py $LEGACY_SURVEY_DIR $outdir
-python $PROJECTPATH/legacypipe/py/legacypipe/runbrick.py --outdir=$outdir --coadd-bw --nsigma=5 --force-all --radec 211.315074 +54.416022 --blobradec 211.315074 +54.416022 --unwise-dir $LEGACY_SURVEY_DIR/images --bands=1 --no-wise #--plots
+python $PROJECTPATH/legacypipe/py/legacypipe/runbrick.py --outdir=$outdir --pickle $outdir/pickles --coadd-bw --nsigma=5 --force-all --radec 211.315074 +54.416022 --blobradec 211.315074 +54.416022 --unwise-dir $LEGACY_SURVEY_DIR/images --bands=1 --no-wise #--plots
 
 #python $PROJECTPATH/legacypipe/py/legacypipe/forced_photom.py --catalog $LEGACY_SURVEY_DIR/tractor-i/cus/tractor-custom-230217p54215.fits 53820533 CCD0  $LEGACY_SURVEY_DIR/tractor-i/cus/tractor-custom-230217p54215.fits testout 
 

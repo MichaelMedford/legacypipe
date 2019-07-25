@@ -53,7 +53,7 @@ def main():
 
 	#initialize.delete_folder_contents(args.folder, args.debug)
 	#initialize.create_lists(args.folder, args.debug)
-	scie_list = np.genfromtxt(args.folder+"/scie.list",dtype=str)
+	scie_list = np.genfromtxt(args.folder+"/scie_PS1.list",dtype=str)
 	#print(len([scie_list]))
 
 	if len([scie_list])==1:
@@ -72,8 +72,8 @@ def main():
 	
 	# CALCULATE IMAGE PROPERTIES AND UPDATE HEADERS	
 	pre_cat_list = [scie.replace('ztf','prelim.ztf').replace('.fits','.cat') for scie in scie_list]
-	#zp, see, lmt_mag, skys, skysigs = zpsee.zpsee_info(scie_list, pre_cat_list, args.debug)
-	#zpsee.update_image_headers(zp, see, lmt_mag, skys, skysigs, scie_list, args.debug)
+	zp, see, lmt_mag, skys, skysigs = zpsee.zpsee_info(scie_list, pre_cat_list, args.debug)
+	zpsee.update_image_headers(zp, see, lmt_mag, skys, skysigs, scie_list, args.debug)
 	
 	# CREATION OF FINAL SEXTRACTOR CATALOGS FOR IMAGES
 	final_sex.create_sex_cats(scie_list, args.debug)

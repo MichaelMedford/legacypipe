@@ -17,7 +17,7 @@ from astrometry.util.ttime import Time, MemMeas
 
 from tractor import Tractor, Catalog, NanoMaggies
 from tractor.galaxy import disable_galaxy_cache
-
+from tractor.galaxy import ExpGalaxy, DevGalaxy, FixedCompositeGalaxy, PSFandExpGalaxy_diffcentres, PSFandDevGalaxy_diffcentres, PSFandCompGalaxy_diffcentres
 from legacypipe.survey import LegacySurveyData, bricks_touching_wcs, get_version_header, apertures_arcsec
 from catalog import read_fits_catalog
 
@@ -254,6 +254,7 @@ def bounce_one_ccd(X):
     return run_one_ccd(*X)
 
 def run_one_ccd(survey, catsurvey, ccd, opt, zoomslice, ps):
+    
     tlast = Time()
 
     im = survey.get_image_object(ccd)
@@ -357,6 +358,7 @@ def run_one_ccd(survey, catsurvey, ccd, opt, zoomslice, ps):
 
     kwargs = {}
     cols = T.get_columns()
+    #print(cols)
     if 'flux_r' in cols and not 'decam_flux_r' in cols:
         kwargs.update(fluxPrefix='')
 #<<<<<<< HEAD
@@ -367,15 +369,22 @@ def run_one_ccd(survey, catsurvey, ccd, opt, zoomslice, ps):
     tnow = Time()
     print('Read catalog:', tnow-tlast)
     tlast = tnow
-
-    cat = read_fits_catalog(T, bands='g', **kwargs)
+    #if 'flux_r' in cols:
+    #    bands='r'
+    #elif 'flux_g' in cols:
+    #    bands='g'
+    #print('bands are',bands)
+    print('bands',tim.band)
+    cat = read_fits_catalog(T,bands=tim.band,**kwargs)
 #>>>>>>> 457b44ac8814215e607b45f106870ecc6666d55d
     # Replace the brightness (which will be a NanoMaggies with g,r,z)
     # with a NanoMaggies with this image's band only.
+    
     for src in cat:
         src.brightness = NanoMaggies(**{tim.band: 1.}) 
-        if src.brightnessPoint:
-            src.brightnessPoint = NanoMaggies(**{tim.band: 1.})
+        if isinstance(src, (PSFandDevGalaxy_diffcentres, PSFandExpGalaxy_diffcentres, PSFandCompGalaxy_diffcentres)):
+            if src.brightnessPoint:
+                src.brightnessPoint = NanoMaggies(**{tim.band: 1.})
 
 
     tnow = Time()
@@ -510,6 +519,7 @@ def run_forced_phot(cat, tim, ceres=True, derivs=False, agn=False,
     fixed_also: if derivs=True, also run without derivatives and report
     that flux too?
     '''
+    from tractor.galaxy import ExpGalaxy, DevGalaxy, FixedCompositeGalaxy, PSFandExpGalaxy_diffcentres, PSFandDevGalaxy_diffcentres, PSFandCompGalaxy_diffcentres 
     if timing:
         t0 = Time()
     if ps is not None:
@@ -537,10 +547,13 @@ def run_forced_phot(cat, tim, ceres=True, derivs=False, agn=False,
                 nsize += 1
                 src.halfsize = MAXHALF
         '''
-        src.freezeAllBut('brightnessPoint','brightnessDev')
-        #print(src.getBrightnessPoint())
-        src.getBrightnessPoint().freezeAllBut(tim.band)
-        src.getBrightnessDev().freezeAllBut(tim.band)
+        #for b in bands:
+        if isinstance(src, (PSFandDevGalaxy_diffcentres, PSFandExpGalaxy_diffcentres, PSFandCompGalaxy_diffcentres)):
+            src.freezeAllBut('brightnessPoint')#,'brightnessExp')  
+            src.getBrightnessPoint().freezeAllBut(tim.band)
+        else:
+            src.freezeAllBut('brightness')
+            src.getBrightness().freezeAllBut(tim.band)
 
         #=======
         # from tractor.galaxy import ProfileGalaxy
@@ -563,9 +576,12 @@ def run_forced_phot(cat, tim, ceres=True, derivs=False, agn=False,
         derivsrcs = []
         for src in cat:
             realsrcs.append(src)
-
-            brightness_dra  = src.getBrightnessPoint().copy()
-            brightness_ddec = src.getBrightnessPoint().copy()
+            if isinstance(src, (PSFandDevGalaxy_diffcentres, PSFandExpGalaxy_diffcentres, PSFandCompGalaxy_diffcentres)):
+                brightness_dra  = src.getBrightnessPoint().copy()
+                brightness_ddec = src.getBrightnessPoint().copy()
+            else:
+                brightness_dra  = src.getBrightness().copy()
+                brightness_ddec = src.getBrightness().copy()
             brightness_dra .setParams(np.zeros(brightness_dra .numberOfParams()))
             brightness_ddec.setParams(np.zeros(brightness_ddec.numberOfParams()))
             brightness_dra .freezeAllBut(tim.band)
@@ -669,24 +685,39 @@ def run_forced_phot(cat, tim, ceres=True, derivs=False, agn=False,
         if agn:
             cat = realsrcs
 
-        F.flux = np.array([src.getBrightness().getFlux(tim.band)
-                           for src in cat]).astype(np.float32)
-        N = len(cat)
-        F.flux_ivar = R.IV[:N].astype(np.float32)
-
-        F.fracflux = R.fitstats.profracflux[:N].astype(np.float32)
-        F.rchi2    = R.fitstats.prochi2    [:N].astype(np.float32)
         # 1 - 
         #F.fracmasked = R.fitstats.pronpix  [:N].astype(np.float32)
         try:
             F.fracmasked = R.fitstats.promasked[:N].astype(np.float32)
         except:
             print('No "fracmasked" available (only in recent Tractor versions)')
-        F.fluxPoint = np.array([src.getBrightnessPoint().getFlux(tim.band)
-                           for src in cat]).astype(np.float32)
         
-        F.fluxGal = np.array([src.getBrightnessDev().getFlux(tim.band)
-                           for src in cat]).astype(np.float32)
+        if isinstance(src, (PSFandDevGalaxy_diffcentres, PSFandExpGalaxy_diffcentres, PSFandCompGalaxy_diffcentres)):
+            F.fluxPoint = np.array([src.getBrightnessPoint().getFlux(tim.band)
+                               for src in cat]).astype(np.float32)
+            if isinstance(src, (PSFandDevGalaxy_diffcentres)): 
+                F.fluxGal = np.array([src.getBrightnessDev().getFlux(tim.band)
+                                   for src in cat]).astype(np.float32)
+            elif isinstance(src, (PSFandExpGalaxy_diffcentres)):
+                F.fluxGal = np.array([src.getBrightnessExp().getFlux(tim.band)
+                                   for src in cat]).astype(np.float32)
+            elif isinstance(src, (PSFandExpGalaxy_diffcentres)):
+                #Add something to sum the two galaxy brightnesses
+                F.fluxGal = np.array([src.getBrightnessExp().getFlux(tim.band)
+                                   for src in cat]).astype(np.float32)
+
+
+
+        else:
+            F.flux = np.array([src.getBrightness().getFlux(tim.band)
+                               for src in cat]).astype(np.float32)
+        N = len(cat)
+        print('R.IV is', R.IV)
+        F.flux_ivar = R.IV[:N].astype(np.float32)
+
+        #F.fracflux = R.fitstats.profracflux[:N].astype(np.float32)
+        F.rchi2    = R.fitstats.prochi2    [:N].astype(np.float32)
+
 
         if derivs:
             F.flux_dra  = np.array([src.getParams()[0] for src in derivsrcs]).astype(np.float32)

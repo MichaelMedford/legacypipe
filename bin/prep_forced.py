@@ -1,12 +1,24 @@
 from astropy.io import fits
 import sys
-with open('/project/projectdirs/uLens/ZTF/Tractor/data/ZTF18abcfdzu/tractor/survey-ccds-ztf.fits','rb') as f: 
+import glob
+import os
+import gzip
+#src='ZTF18aajytjt_PS1stack'
+src=sys.argv[1]
+directory='/global/cscratch1/sd/cwar4677/'+src+'/tractor'#os.getenv('LEGACY_SURVEY_DIR')
+plotdir='/project/projectdirs/uLens/ZTF/Tractor/data/'+src+'/tractor/coadd/'
+with gzip.open(directory+'/survey-ccds-ztf.fits.gz','rb') as f: 
     hdul=fits.open(f)
-    print(hdul[1].data)  
+    
     expnums = hdul[1].data['EXPNUM']
     ccdsnames = hdul[1].data['CCDNAME']
-print(expnums,ccdsnames)
+print(len(expnums))
 
-for expnum in expnums:
-    with open('runbrick_ZTF18abcfdzu.sh','a') as g:
-        g.write('python $PROJECTPATH/legacypipe/py/legacypipe/forced_photom.py --no-ceres --no-move-gaia --catalog-dir=$LEGACY_SURVEY_DIR --catalog $LEGACY_SURVEY_DIR/tractor-i/cus/tractor-custom-230217p54215.fits ' +str(expnum)+' CCD0  $LEGACY_SURVEY_DIR/tractor/cus/forced_'+str(expnum)+'.fits\n\n')
+try:
+    cat=glob.glob(directory+'/tractor-i/cus/tractor-custom*replace.fits')[0]
+    print(cat)
+except IndexError:
+    cat=glob.glob(directory+'/tractor-i/cus/tractor-custom*.fits')[0]
+for expnum,ccdname in zip(expnums[:100],ccdsnames[:100]):
+    with open('runbrick_'+src+'.sh','a') as g:
+        g.write('python $PROJECTPATH/legacypipe/py/legacypipe/forced_photom.py --no-ceres --no-move-gaia --catalog-dir=$LEGACY_SURVEY_DIR --catalog '+str(cat)+' ' +str(expnum)+' '+str(ccdname)+'  $LEGACY_SURVEY_DIR/tractor/cus/new2_forced_'+str(expnum)+'_'+str(ccdname)+'.fits\n\n')

@@ -436,7 +436,7 @@ class LegacySurveyImage(object):
             del zsky
 
         orig_zpscale = zpscale = NanoMaggies.zeropointToScale(self.ccdzpt)
-        print('zpscale = ',zpscale,np.median(img))
+        print('zpscale = ',zpscale,np.median(img),nanomaggies,self.ccdzpt)
         
         if nanomaggies:
             # Scale images to Nanomaggies
@@ -839,6 +839,51 @@ class LegacySurveyImage(object):
         from astropy import wcs as wc
         # Make sure the PV-to-SIP converter samples enough points for small
         # images
+        
+        def read_tan_wcs(hdr):
+            #if scale > 0:
+            #    return super(PS1Layer, self).read_wcs(brickname, band, scale)
+            #print('read_wcs for', brickname, 'band', band, 'scale', scale)
+            # PS1 wonky WCS
+            from astrometry.util.util import Tan 
+            cdelt1 = hdr['CDELT1']
+            cdelt2 = hdr['CDELT2']
+            # ????
+            cd11 = hdr['PC001001'] * cdelt1
+            cd12 = hdr['PC001002'] * cdelt1
+            cd21 = hdr['PC002001'] * cdelt2
+            cd22 = hdr['PC002002'] * cdelt2
+            W = hdr['NAXIS1']
+            H = hdr['NAXIS2']
+            hdr['CD1_1']=cd11 
+            hdr['CD1_2']=cd12 
+            hdr['CD2_1']=cd21 
+            hdr['CD2_2']=cd22 
+            '''
+            del hdr['PC001001']
+            del hdr['PC001002']
+            del hdr['PC002001']
+            del hdr['PC002002']
+
+            
+            w = wc.WCS(naxis=2)
+            w.wcs.cdelt = np.array([cdelt1, cdelt2])
+            w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+            w.wcs.cd = np.array([[cd11, cd12],[cd21, cd22]])
+            #w.wcs.naxis = np.array([W, H]) 
+            hdrout=w.to_header()
+            print(hdr.records())
+            #hdrout['records']=hdr['records']
+            wcs = Tan(*[float(x) for x in [
+                        hdr['CRVAL1'], hdr['CRVAL2'], hdr['CRPIX1'], hdr['CRPIX2'],
+                        cd11, cd12, cd21, cd22, W, H]])
+            '''
+            return hdr
+
+
+
+
+
         stepsize = 0
         if min(self.width, self.height) < 600:
             stepsize = min(self.width, self.height) / 10.;
@@ -847,10 +892,18 @@ class LegacySurveyImage(object):
         wcs = wc.WCS(hdr)
         #print('WCS HERE',wcs,wcs.all_pix2world(0,0,0))
         #print(wcs.pixelxy2radec(0,0)) 
+       
+        if 'PC001001' in hdr:
+            print('in here')
+            hdr = read_tan_wcs(hdr)
+            #print(wcs)
+            #hdr = wcs.to_header()
+            #print(hdr)
+        #else:
         wcs = wcs_pv2sip_hdr(hdr, stepsize=stepsize)
         # Correction: ccd ra,dec offsets from zeropoints/CCDs file
         #print('WCS from pv2sip',wcs,wcs.pixelxy2radec(0,0)) 
-        #print('WCS HERE',wcs.wcs_pix2world(1,1,0))
+        
 
         dra,ddec = self.dradec
         #print('dra ddec',self.dradec)
@@ -862,7 +915,9 @@ class LegacySurveyImage(object):
         wcs.plver = phdr.get('PLVER', '').strip()
         return wcs
 
-    '''
+    
+
+    ''' 
     def get_sig1(self, **kwargs):
         from tractor.brightness import NanoMaggies
         zpscale = NanoMaggies.zeropointToScale(self.ccdzpt)
@@ -1145,11 +1200,12 @@ class LegacySurveyImage(object):
         # fails.  Check whether actually fpacked.
         fcopy = False
         hdr = fitsio.read_header(imgfn, ext=hdu)
+        '''
         if not ((hdr['XTENSION'] == 'BINTABLE') and hdr.get('ZIMAGE', False)):
             debug('Image %s, HDU %i is not fpacked; just imcopying.' %
                   (imgfn,  hdu))
             fcopy = True
-
+        '''
 
         tmpimgfn  = create_temp(suffix='.fits')
         tmpmaskfn = create_temp(suffix='.fits')
@@ -1255,6 +1311,7 @@ class LegacySurveyImage(object):
         '''
         psftmpfn = psfoutfn + '.tmp'
         cmd = 'psfex -c %s -PSF_DIR %s -PSF_SUFFIX .fits.tmp -VERBOSE_TYPE QUIET %s' % (os.path.join(sedir, self.camera + '.psfex'), psfdir, self.sefn)
+        print(cmd)
         debug(cmd)
         rtn = os.system(cmd)
         if rtn:
@@ -1354,7 +1411,7 @@ class LegacySurveyImage(object):
             from scipy.stats import sigmaclip
 
             sig1 = 1./np.sqrt(np.median(wt[good]))
-
+            
             cimage,_,_ = sigmaclip(img[good], low=2.0, high=2.0)
             sky_clipped_median = np.median(cimage)
 

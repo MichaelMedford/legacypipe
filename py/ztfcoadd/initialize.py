@@ -44,13 +44,13 @@ def download_real_stars(folder, debug):
                   3: 'i'}
 
 	im = scie_list[0]
-	print(im)
+
 	with fits.open(im) as f:
 		try:
 			imfilter = filter_tbl[f[0].header['FILTERID']]
 		except KeyError:
 			imfilter = 'g'
-		print(f[0].header)
+	
 		imfilter += '_median'
 		try:
 			nax1 = f[0].header['NAXIS1']
@@ -93,7 +93,7 @@ def download_real_stars(folder, debug):
 def edit_fits_headers(scie_list):
 	for scie in scie_list:
 		
-		print(scie)
+		
 		with fits.open(scie, mode='update') as f:
 			#print(f[0].data)
 			#data = f[0].data

@@ -16,19 +16,11 @@ def create_sex_cats(my_scie_list, debug):
         var = scie.replace('.fits','.var.fits')
         
         with fits.open(scie) as f:
-            print(f[0].header)
-            try:
-                zp = f[0].header['C3ZP']
-            except KeyError:
-                try:
-                    zp = f[0].header['MAGZP']
-                except KeyError:
-                    zp = f[0].header['HIERARCH FPA.ZP']
-
-
-
-            #zp = f[0].header['C3ZP']
             
+            try: 
+                zp = f[0].header['C3ZP'] 
+            except KeyError:
+                continue
         if zp == 0:
             continue
             

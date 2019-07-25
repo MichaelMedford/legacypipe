@@ -29,14 +29,14 @@ def CreateCCDTable(folder,outfolder):
 	slashsplit = lambda x : x.split('/')[-1]
 	slashdir = lambda x : '/'.join(x.split('/')[:-1])
 	
-	print(len([image_list]))
+	
 	
 	#if len([image_list])==1:
 #		image_list=list([str([image_list][0])])
-	print(image_list)
 
 
-	
+
+	print(len(image_list))
 	for image in image_list:
 		
 	
@@ -51,6 +51,18 @@ def CreateCCDTable(folder,outfolder):
 		with fits.open(image) as f:
 			header = f[0].header
 		try:
+			sig1=header['C3SKYSIG']
+			print(header['C3SKYSIG'],'C3SKYSIG')
+		except KeyError:
+			continue
+
+		try:
+			table['ccdzpt'].append(header['C3ZP'])
+		except KeyError:
+			continue 
+
+
+		try:
 			table['fwhm'].append(header['C3SEE'])
 		except KeyError:
 			try:
@@ -61,7 +73,9 @@ def CreateCCDTable(folder,outfolder):
 				#except KeyError:
 			#		print('missing C3SEE')
 			#		continue
-		print(table['fwhm'])
+		
+
+	
 		table['image_filename'].append(image_fname)
 		#table['image_key'].append(image_key)
 		table['image_hdu'].append(0)
@@ -71,9 +85,13 @@ def CreateCCDTable(folder,outfolder):
 		except KeyError:
 			table['expnum'].append(57119266)
 		try:
-			table['ccdname'].append(header['EXTNAME'])
+			table['ccdname'].append('CCD'+str(header['CCDID']).zfill(2)+str(header['FIELDID']).zfill(4)+str(header['QID']))
 		except KeyError:
-			table['ccdname'].append('4')
+			table['ccdname'].append('CCD99'+str(header['FIELDID']).zfill(4)+str(header['QID']))
+		#try:
+		#	table['ccdname'].append(header['EXTNAME'])
+		#except KeyError:
+		#	table['ccdname'].append('4')
 		table['object'].append('None')
 		try:
 			table['propid'].append(header['PROGRMID'])
@@ -106,19 +124,12 @@ def CreateCCDTable(folder,outfolder):
 		table['yshift'].append(0)
 		table['ra'].append(float(header['CRVAL1']))
 		table['dec'].append(float(header['CRVAL2']))
-		table['skyrms'].append(0)
-		try:
-			table['sig1'].append(header['C3SKYSIG'])
-		except KeyError:
-			try:
-				table['sig1'].append(header['GSTDDEV'])
-			except KeyError:
-				table['sig1'].append(header['ASTCHI2'])
-		try:
-			table['ccdzpt'].append(header['C3ZP'])
-		except KeyError:
-			table['ccdzpt'].append(header['MAGZP'])
-
+		table['skyrms'].append(float(header['C3SKY']))
+		delta=22.5-header['C3ZP']
+		table['sig1'].append(float(sig1)*10**(delta/2.5))
+		
+		#print(table['expnum'][-1],sig1,table['sig1'][-1])
+		print(header['C3SKY'],header['C3ZP'],header['C3SKYSIG'])
 		#table['zpt'].append(0)		
 		table['ccdraoff'].append(0)
 		table['ccddecoff'].append(0)
@@ -134,7 +145,10 @@ def CreateCCDTable(folder,outfolder):
 	    f_table.set(key,table[key])
 	
 	table_name = outfolder+'/survey-ccds-ztf.fits'
-	
+	if os.path.exists(table_name+'.gz'):
+	    os.remove(table_name+'.gz')
+
+
 	f_table.write_to(table_name)
 	os.system('gzip %s'%table_name)
 	#if os.path.exists(table_name+'.gz'):
